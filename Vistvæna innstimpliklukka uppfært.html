@@ -1,0 +1,2431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeTracker Pro - Staff Time Clock System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-success { animation: pulseSuccess 0.5s ease-in-out; }
+        @keyframes pulseSuccess { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg border-b-4 border-blue-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-2xl font-bold text-gray-900">⏰ TimeTracker Pro</h1>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="showEmployeeInterface()" class="nav-btn bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"><span data-translate="employeeClock">Employee Clock</span></button>
+                    <!-- Admin Access - Hidden from employees -->
+                    <button onclick="showAdminInterface()" class="nav-btn bg-gray-400 text-white px-3 py-2 rounded-lg hover:bg-gray-500 transition-colors text-sm" title="Admin Access">🔐</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Employee Interface -->
+    <div id="employeeInterface" class="container mx-auto px-4 py-8 max-w-md">
+        <div class="bg-white rounded-2xl shadow-xl p-8 fade-in">
+            <div class="text-center mb-8">
+                <div class="text-6xl mb-4">👤</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2"><span data-translate="employeeTimeClock">Employee Time Clock</span></h2>
+                <p class="text-gray-600"><span data-translate="enterEmployeeId">Enter your employee number to clock in or out</span></p>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2"><span data-translate="employeeNumber">Employee Number</span></label>
+                    <input type="text" id="employeeNumber" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg text-center" placeholder="Enter your ID">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="clockIn()" class="bg-green-600 text-white py-4 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg">
+                        🟢 <span data-translate="clockIn">Clock In</span>
+                    </button>
+                    <button onclick="clockOut()" class="bg-red-600 text-white py-4 px-6 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg">
+                        🔴 <span data-translate="clockOut">Clock Out</span>
+                    </button>
+                </div>
+
+                <div id="clockMessage" class="hidden p-4 rounded-lg text-center font-medium"></div>
+
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2"><span data-translate="currentTime">Current Time</span></h3>
+                    <div id="currentTime" class="text-2xl font-mono text-blue-600"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login -->
+    <div id="adminLogin" class="hidden container mx-auto px-4 py-8 max-w-md">
+        <div class="bg-white rounded-2xl shadow-xl p-8 fade-in">
+            <div class="text-center mb-8">
+                <div class="text-6xl mb-4">🔐</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Admin Access</h2>
+                <p class="text-gray-600">Enter PIN code to access admin panel</p>
+            </div>
+
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">PIN Code</label>
+                    <input type="password" id="adminPin" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg text-center" placeholder="Enter 4-digit PIN" maxlength="4">
+                </div>
+
+                <button onclick="verifyAdminPin()" class="w-full bg-green-600 text-white py-4 px-6 rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg">
+                    🔓 Access Admin Panel
+                </button>
+
+                <div id="pinError" class="hidden p-4 bg-red-100 text-red-800 rounded-lg text-center font-medium">
+                    Invalid PIN code. Please try again.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Interface -->
+    <div id="adminInterface" class="hidden container mx-auto px-4 py-8">
+        <div class="bg-white rounded-2xl shadow-xl p-8 fade-in">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">📊 Admin Dashboard</h2>
+                <div class="flex items-center space-x-4">
+                    <button onclick="showTimeRecords()" id="timeRecordsTab" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">⏰ <span data-translate="timeRecords">Time Records</span></button>
+                    <button onclick="showHoursManagement()" id="hoursManagementTab" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">⚙️ <span data-translate="hoursManagement">Hours Management</span></button>
+                    <button onclick="showSalaryCalculator()" id="salaryTab" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">💰 <span data-translate="salaryCalculator">Salary Calculator</span></button>
+                    <button onclick="showMessagesTranslations()" id="messagesTab" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">🌐 <span data-translate="messagesTranslations">Messages & Translations</span></button>
+                    <button onclick="showArchitecture()" id="architectureTab" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">🏗️ <span data-translate="architecture">Architecture</span></button>
+                    <button onclick="exportToCSV()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">📥 Export CSV</button>
+                    <button onclick="generateReport()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">📈 Generate Report</button>
+                    <button onclick="logoutAdmin()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">🚪 Logout</button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-100">Total Employees</p>
+                            <p class="text-3xl font-bold" id="totalEmployees">0</p>
+                        </div>
+                        <div class="text-4xl">👥</div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-100">Currently Clocked In</p>
+                            <p class="text-3xl font-bold" id="clockedInCount">0</p>
+                        </div>
+                        <div class="text-4xl">✅</div>
+                    </div>
+                </div>
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-purple-100">Total Hours Today</p>
+                            <p class="text-3xl font-bold" id="totalHoursToday">0</p>
+                        </div>
+                        <div class="text-4xl">⏱️</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employee Management -->
+            <div class="bg-gray-50 rounded-xl p-6 mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-800">Employee Management</h3>
+                    <button onclick="showAddEmployeeModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                        ➕ Add New Employee
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="bg-gray-200 text-gray-700">
+                                <th class="px-4 py-3 text-left rounded-l-lg">Employee ID</th>
+                                <th class="px-4 py-3 text-left">Name</th>
+                                <th class="px-4 py-3 text-left">Role</th>
+                                <th class="px-4 py-3 text-left">Hourly Rate</th>
+                                <th class="px-4 py-3 text-left">Status</th>
+                                <th class="px-4 py-3 text-left rounded-r-lg">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeeManagementTable" class="divide-y divide-gray-200">
+                            <!-- Employee records will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Time Records Table -->
+            <div id="timeRecordsSection" class="bg-gray-50 rounded-xl p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Time Records</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="bg-gray-200 text-gray-700">
+                                <th class="px-4 py-3 text-left rounded-l-lg">Employee ID</th>
+                                <th class="px-4 py-3 text-left">Name</th>
+                                <th class="px-4 py-3 text-left">Clock In</th>
+                                <th class="px-4 py-3 text-left">Clock Out</th>
+                                <th class="px-4 py-3 text-left">Hours Worked</th>
+                                <th class="px-4 py-3 text-left">Status</th>
+                                <th class="px-4 py-3 text-left rounded-r-lg">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timeRecordsTable" class="divide-y divide-gray-200">
+                            <!-- Records will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Hours Management Section -->
+            <div id="hoursManagementSection" class="hidden bg-gray-50 rounded-xl p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-8">⚙️ Hours Management & Administration</h3>
+                
+                <!-- Tab Navigation for Hours Management -->
+                <div class="flex space-x-4 mb-6">
+                    <button onclick="showEditHours()" id="editHoursTab" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        ✏️ Edit Hours
+                    </button>
+                    <button onclick="showResetHours()" id="resetHoursTab" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                        🔄 Reset Hours
+                    </button>
+                    <button onclick="showAuditLog()" id="auditLogTab" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                        📋 Audit Log
+                    </button>
+                </div>
+
+                <!-- Edit Hours Tab -->
+                <div id="editHoursContent" class="space-y-6">
+                    <div class="bg-white rounded-lg p-6 border">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">✏️ Edit Employee Hours</h4>
+                        
+                        <!-- Employee Selection -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Employee</label>
+                                <select id="editHoursEmployee" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" onchange="loadEmployeeHours()">
+                                    <option value="">Choose an employee...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Time Period</label>
+                                <select id="editHoursPeriod" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" onchange="loadEmployeeHours()">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                                <input type="date" id="editHoursDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" onchange="loadEmployeeHours()">
+                            </div>
+                        </div>
+
+                        <!-- Current Hours Display -->
+                        <div id="currentHoursDisplay" class="hidden bg-blue-50 rounded-lg p-4 mb-6">
+                            <h5 class="font-medium text-blue-800 mb-3">Current Hours Summary</h5>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-white p-3 rounded border">
+                                    <div class="text-sm text-gray-600">Total Hours</div>
+                                    <div class="text-xl font-bold text-blue-600" id="currentTotalHours">0.00h</div>
+                                </div>
+                                <div class="bg-white p-3 rounded border">
+                                    <div class="text-sm text-gray-600">Number of Records</div>
+                                    <div class="text-xl font-bold text-green-600" id="currentRecordCount">0</div>
+                                </div>
+                                <div class="bg-white p-3 rounded border">
+                                    <div class="text-sm text-gray-600">Average per Day</div>
+                                    <div class="text-xl font-bold text-purple-600" id="currentAverageHours">0.00h</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Edit Hours Form -->
+                        <div id="editHoursForm" class="hidden space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">New Total Hours</label>
+                                    <input type="number" id="newTotalHours" step="0.25" min="0" max="24" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="e.g., 8.5">
+                                    <p class="text-xs text-gray-500 mt-1">Enter the new total hours for the selected period</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Change</label>
+                                    <select id="editReason" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Select reason...</option>
+                                        <option value="correction">Time Correction</option>
+                                        <option value="missed_clockout">Missed Clock Out</option>
+                                        <option value="overtime_adjustment">Overtime Adjustment</option>
+                                        <option value="sick_leave">Sick Leave Adjustment</option>
+                                        <option value="vacation">Vacation Time</option>
+                                        <option value="admin_override">Administrative Override</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Additional Notes (Optional)</label>
+                                <textarea id="editNotes" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Add any additional details about this change..."></textarea>
+                            </div>
+                            <div class="flex justify-end space-x-4">
+                                <button onclick="cancelEditHours()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors">
+                                    Cancel
+                                </button>
+                                <button onclick="confirmEditHours()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                                    💾 Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reset Hours Tab -->
+                <div id="resetHoursContent" class="hidden space-y-6">
+                    <div class="bg-white rounded-lg p-6 border">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">🔄 Reset Time Records</h4>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                            <div class="flex items-center">
+                                <div class="text-yellow-600 mr-3">⚠️</div>
+                                <div>
+                                    <h5 class="font-medium text-yellow-800">Warning: Destructive Action</h5>
+                                    <p class="text-sm text-yellow-700">Resetting hours will permanently delete time records. This action cannot be undone.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reset Options -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Reset Scope</label>
+                                <select id="resetScope" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" onchange="updateResetOptions()">
+                                    <option value="">Select scope...</option>
+                                    <option value="single">Single Employee</option>
+                                    <option value="multiple">Multiple Employees</option>
+                                    <option value="all">All Employees</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Time Period</label>
+                                <select id="resetPeriod" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                    <option value="">Select period...</option>
+                                    <option value="daily">Specific Day</option>
+                                    <option value="weekly">Specific Week</option>
+                                    <option value="monthly">Specific Month</option>
+                                    <option value="range">Date Range</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Employee Selection (shown when needed) -->
+                        <div id="resetEmployeeSelection" class="hidden mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Employee(s)</label>
+                            <div id="resetEmployeeList" class="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                                <!-- Employee checkboxes will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- Date Selection -->
+                        <div id="resetDateSelection" class="hidden mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                                    <input type="date" id="resetStartDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                </div>
+                                <div id="resetEndDateDiv" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                                    <input type="date" id="resetEndDate" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reset Preview -->
+                        <div id="resetPreview" class="hidden bg-red-50 rounded-lg p-4 mb-6">
+                            <h5 class="font-medium text-red-800 mb-3">Reset Preview</h5>
+                            <div id="resetPreviewContent" class="text-sm text-red-700">
+                                <!-- Preview content will be populated here -->
+                            </div>
+                        </div>
+
+                        <!-- Reset Confirmation -->
+                        <div id="resetConfirmation" class="hidden space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Reason for Reset</label>
+                                <select id="resetReason" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                    <option value="">Select reason...</option>
+                                    <option value="payroll_correction">Payroll Period Correction</option>
+                                    <option value="system_error">System Error Recovery</option>
+                                    <option value="policy_change">Policy Change Implementation</option>
+                                    <option value="data_migration">Data Migration</option>
+                                    <option value="admin_request">Administrative Request</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
+                                <textarea id="resetNotes" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="Provide detailed explanation for this reset action..."></textarea>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" id="resetConfirmCheck" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                                <label for="resetConfirmCheck" class="text-sm font-medium text-gray-700">
+                                    I understand this action will permanently delete the selected time records and cannot be undone.
+                                </label>
+                            </div>
+                            <div class="flex justify-end space-x-4">
+                                <button onclick="cancelReset()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors">
+                                    Cancel
+                                </button>
+                                <button onclick="executeReset()" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors">
+                                    🗑️ Execute Reset
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-4">
+                            <button onclick="previewReset()" id="previewResetBtn" class="hidden bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors">
+                                👁️ Preview Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit Log Tab -->
+                <div id="auditLogContent" class="hidden space-y-6">
+                    <div class="bg-white rounded-lg p-6 border">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-semibold text-gray-800">📋 Administrative Audit Log</h4>
+                            <div class="flex space-x-2">
+                                <select id="auditFilter" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" onchange="filterAuditLog()">
+                                    <option value="all">All Actions</option>
+                                    <option value="edit">Hours Edited</option>
+                                    <option value="reset">Hours Reset</option>
+                                    <option value="delete">Records Deleted</option>
+                                </select>
+                                <button onclick="exportAuditLog()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                                    📥 Export Log
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full table-auto">
+                                <thead>
+                                    <tr class="bg-gray-200 text-gray-700">
+                                        <th class="px-4 py-3 text-left rounded-l-lg">Timestamp</th>
+                                        <th class="px-4 py-3 text-left">Admin User</th>
+                                        <th class="px-4 py-3 text-left">Action</th>
+                                        <th class="px-4 py-3 text-left">Employee(s)</th>
+                                        <th class="px-4 py-3 text-left">Details</th>
+                                        <th class="px-4 py-3 text-left rounded-r-lg">Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditLogTable" class="divide-y divide-gray-200">
+                                    <!-- Audit log entries will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages & Translations Section -->
+            <div id="messagesSection" class="hidden bg-gray-50 rounded-xl p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6">🌐 <span data-translate="messagesTranslations">Messages & Translations</span></h3>
+                
+                <!-- Tab Navigation for Messages Section -->
+                <div class="flex space-x-4 mb-6">
+                    <button onclick="showCustomMessages()" id="customMessagesTab" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        💬 <span data-translate="customizeMessages">Customize Messages</span>
+                    </button>
+                    <button onclick="showTranslations()" id="translationsTab" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                        🔤 <span data-translate="translateInterface">Translate Interface</span>
+                    </button>
+                </div>
+
+                <!-- Custom Messages Tab -->
+                <div id="customMessagesContent" class="space-y-6">
+                    <div class="bg-white rounded-lg p-6 border">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">⏰ Clock In Messages</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Success Message</label>
+                                <textarea id="clockInSuccess" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Welcome, [Employee Name]! You clocked in at [Time]."></textarea>
+                                <p class="text-xs text-gray-500 mt-1">Available placeholders: [Employee Name], [Time], [Date]</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Already Clocked In Message</label>
+                                <textarea id="clockInAlready" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="[Employee Name], you are already clocked in!"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Invalid Employee Message</label>
+                                <textarea id="clockInInvalid" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Invalid employee number. Please try again."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg p-6 border">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">🚪 Clock Out Messages</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Success Message</label>
+                                <textarea id="clockOutSuccess" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Goodbye [Employee Name]! You clocked out at [Time]. Hours worked: [Hours]"></textarea>
+                                <p class="text-xs text-gray-500 mt-1">Available placeholders: [Employee Name], [Time], [Date], [Hours]</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Not Clocked In Message</label>
+                                <textarea id="clockOutNotIn" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="No active clock-in found for this employee."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Invalid Employee Message</label>
+                                <textarea id="clockOutInvalid" rows="2" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Invalid employee number. Please try again."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Message Preview -->
+                    <div class="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-4">📋 Message Preview</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-blue-700 mb-1">Test Employee Name:</label>
+                                <input type="text" id="previewEmployeeName" value="John Smith" class="px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 w-48">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-white p-4 rounded-lg border">
+                                    <h5 class="font-medium text-gray-800 mb-2">Clock In Preview:</h5>
+                                    <div id="clockInPreview" class="text-sm text-gray-600 bg-green-50 p-3 rounded border-l-4 border-green-400"></div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg border">
+                                    <h5 class="font-medium text-gray-800 mb-2">Clock Out Preview:</h5>
+                                    <div id="clockOutPreview" class="text-sm text-gray-600 bg-red-50 p-3 rounded border-l-4 border-red-400"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-4">
+                        <button onclick="resetMessages()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors">
+                            🔄 Reset to Default
+                        </button>
+                        <button onclick="saveMessages()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
+                            💾 <span data-translate="save">Save Messages</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Translations Tab -->
+                <div id="translationsContent" class="hidden space-y-6">
+                    <div class="bg-white rounded-lg p-6 border">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">🔤 Interface Translations</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Navigation Translations -->
+                            <div class="space-y-4">
+                                <h5 class="font-medium text-gray-700 border-b pb-2">Navigation</h5>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Employee Clock</label>
+                                    <input type="text" id="trans_employeeClock" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Admin Panel</label>
+                                    <input type="text" id="trans_adminPanel" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Architecture</label>
+                                    <input type="text" id="trans_architecture" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+
+                            <!-- Employee Interface Translations -->
+                            <div class="space-y-4">
+                                <h5 class="font-medium text-gray-700 border-b pb-2">Employee Interface</h5>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Clock In</label>
+                                    <input type="text" id="trans_clockIn" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Clock Out</label>
+                                    <input type="text" id="trans_clockOut" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Employee Number</label>
+                                    <input type="text" id="trans_employeeNumber" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-1">Current Time</label>
+                                    <input type="text" id="trans_currentTime" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Translation Preview -->
+                        <div class="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
+                            <h5 class="font-medium text-blue-800 mb-3">🔍 Translation Preview</h5>
+                            <div class="bg-white p-4 rounded-lg border">
+                                <div class="flex space-x-4 mb-4">
+                                    <button class="bg-green-600 text-white px-4 py-2 rounded-lg">
+                                        🟢 <span id="previewClockIn">Clock In</span>
+                                    </button>
+                                    <button class="bg-red-600 text-white px-4 py-2 rounded-lg">
+                                        🔴 <span id="previewClockOut">Clock Out</span>
+                                    </button>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <span id="previewEmployeeNumber">Employee Number</span>: <span id="previewCurrentTime">Current Time</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-4 mt-6">
+                            <button onclick="resetTranslations()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors">
+                                🔄 Reset to Default
+                            </button>
+                            <button onclick="saveTranslations()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
+                                💾 <span data-translate="save">Save Translations</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Salary Calculator -->
+            <div id="salarySection" class="hidden bg-gray-50 rounded-xl p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6">💰 Monthly Salary Calculator</h3>
+                
+                <!-- Month and Year Selection -->
+                <div class="mb-6 flex items-center space-x-4">
+                    <label class="text-sm font-medium text-gray-700">Select Year:</label>
+                    <select id="salaryYear" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" onchange="updateMonthOptions()">
+                        <option value="2023">2023</option>
+                        <option value="2024" selected>2024</option>
+                        <option value="2025">2025</option>
+                    </select>
+                    <label class="text-sm font-medium text-gray-700">Select Month:</label>
+                    <select id="salaryMonth" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="01">January</option>
+                        <option value="02">February</option>
+                        <option value="03">March</option>
+                        <option value="04">April</option>
+                        <option value="05">May</option>
+                        <option value="06">June</option>
+                        <option value="07">July</option>
+                        <option value="08">August</option>
+                        <option value="09">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                    <button onclick="calculateSalaries()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">Calculate Salaries</button>
+                </div>
+
+                <!-- Salary Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-green-100">Total Monthly Payroll</p>
+                                <p class="text-3xl font-bold" id="totalPayroll">$0.00</p>
+                            </div>
+                            <div class="text-4xl">💵</div>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-blue-100">Average Salary</p>
+                                <p class="text-3xl font-bold" id="averageSalary">$0.00</p>
+                            </div>
+                            <div class="text-4xl">📊</div>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-purple-100">Total Hours Worked</p>
+                                <p class="text-3xl font-bold" id="totalHoursMonth">0h</p>
+                            </div>
+                            <div class="text-4xl">⏰</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Individual Salary Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full table-auto">
+                        <thead>
+                            <tr class="bg-gray-200 text-gray-700">
+                                <th class="px-4 py-3 text-left rounded-l-lg">Employee</th>
+                                <th class="px-4 py-3 text-left">Role</th>
+                                <th class="px-4 py-3 text-left">Hourly Rate</th>
+                                <th class="px-4 py-3 text-left">Hours Worked</th>
+                                <th class="px-4 py-3 text-left">Gross Salary</th>
+                                <th class="px-4 py-3 text-left rounded-r-lg">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salaryTable" class="divide-y divide-gray-200">
+                            <!-- Salary records will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Architecture Documentation -->
+            <div id="architectureSection" class="hidden bg-gray-50 rounded-xl p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-8">🏗️ System Architecture & Documentation</h3>
+            
+            <!-- App Architecture -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">📋 Application Architecture</h3>
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-blue-100 p-4 rounded-lg">
+                            <h4 class="font-semibold text-blue-800 mb-2">Frontend Layer</h4>
+                            <ul class="text-sm text-blue-700 space-y-1">
+                                <li>• Responsive HTML5/CSS3/JavaScript</li>
+                                <li>• Tailwind CSS for styling</li>
+                                <li>• Mobile-first design approach</li>
+                                <li>• Real-time clock updates</li>
+                                <li>• Local storage for demo data</li>
+                            </ul>
+                        </div>
+                        <div class="bg-green-100 p-4 rounded-lg">
+                            <h4 class="font-semibold text-green-800 mb-2">Backend Layer (Production)</h4>
+                            <ul class="text-sm text-green-700 space-y-1">
+                                <li>• Node.js/Express.js API server</li>
+                                <li>• JWT authentication system</li>
+                                <li>• RESTful API endpoints</li>
+                                <li>• Input validation & sanitization</li>
+                                <li>• Rate limiting & security headers</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Database Schema -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">🗄️ Database Schema</h3>
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-4 rounded-lg border">
+                            <h4 class="font-semibold text-gray-800 mb-3">👤 employees</h4>
+                            <div class="text-sm space-y-1">
+                                <div class="flex justify-between"><span class="font-mono">id</span><span class="text-gray-600">PRIMARY KEY</span></div>
+                                <div class="flex justify-between"><span class="font-mono">employee_number</span><span class="text-gray-600">VARCHAR(20) UNIQUE</span></div>
+                                <div class="flex justify-between"><span class="font-mono">first_name</span><span class="text-gray-600">VARCHAR(50)</span></div>
+                                <div class="flex justify-between"><span class="font-mono">last_name</span><span class="text-gray-600">VARCHAR(50)</span></div>
+                                <div class="flex justify-between"><span class="font-mono">email</span><span class="text-gray-600">VARCHAR(100)</span></div>
+                                <div class="flex justify-between"><span class="font-mono">department</span><span class="text-gray-600">VARCHAR(50)</span></div>
+                                <div class="flex justify-between"><span class="font-mono">hourly_rate</span><span class="text-gray-600">DECIMAL(10,2)</span></div>
+                                <div class="flex justify-between"><span class="font-mono">created_at</span><span class="text-gray-600">TIMESTAMP</span></div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border">
+                            <h4 class="font-semibold text-gray-800 mb-3">⏰ time_entries</h4>
+                            <div class="text-sm space-y-1">
+                                <div class="flex justify-between"><span class="font-mono">id</span><span class="text-gray-600">PRIMARY KEY</span></div>
+                                <div class="flex justify-between"><span class="font-mono">employee_id</span><span class="text-gray-600">FOREIGN KEY</span></div>
+                                <div class="flex justify-between"><span class="font-mono">clock_in</span><span class="text-gray-600">TIMESTAMP</span></div>
+                                <div class="flex justify-between"><span class="font-mono">clock_out</span><span class="text-gray-600">TIMESTAMP NULL</span></div>
+                                <div class="flex justify-between"><span class="font-mono">break_duration</span><span class="text-gray-600">INT (minutes)</span></div>
+                                <div class="flex justify-between"><span class="font-mono">total_hours</span><span class="text-gray-600">DECIMAL(5,2)</span></div>
+                                <div class="flex justify-between"><span class="font-mono">notes</span><span class="text-gray-600">TEXT</span></div>
+                                <div class="flex justify-between"><span class="font-mono">created_at</span><span class="text-gray-600">TIMESTAMP</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Flow -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">🔄 User Flow Diagrams</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-blue-50 p-6 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-4">Employee Flow</h4>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">1</div>
+                                <span>Enter employee number</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">2</div>
+                                <span>Click Clock In/Out button</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">3</div>
+                                <span>System validates employee ID</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">4</div>
+                                <span>Record timestamp in database</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">5</div>
+                                <span>Display confirmation message</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-green-50 p-6 rounded-lg">
+                        <h4 class="font-semibold text-green-800 mb-4">Admin Flow</h4>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">1</div>
+                                <span>Admin login with credentials</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">2</div>
+                                <span>View dashboard with summaries</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">3</div>
+                                <span>Review time records table</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">4</div>
+                                <span>Edit entries if needed</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">5</div>
+                                <span>Generate reports & export data</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Endpoints -->
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">🔌 API Endpoints</h3>
+                <div class="bg-gray-50 rounded-lg p-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+                        <div class="bg-white p-4 rounded border">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-mono">POST</span>
+                                <span class="font-mono">/api/clock-in</span>
+                            </div>
+                            <p class="text-gray-600">Record employee clock-in time</p>
+                        </div>
+                        <div class="bg-white p-4 rounded border">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">PUT</span>
+                                <span class="font-mono">/api/clock-out</span>
+                            </div>
+                            <p class="text-gray-600">Record employee clock-out time</p>
+                        </div>
+                        <div class="bg-white p-4 rounded border">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-mono">GET</span>
+                                <span class="font-mono">/api/time-records</span>
+                            </div>
+                            <p class="text-gray-600">Fetch all time records</p>
+                        </div>
+                        <div class="bg-white p-4 rounded border">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-mono">GET</span>
+                                <span class="font-mono">/api/reports</span>
+                            </div>
+                            <p class="text-gray-600">Generate time reports</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Features -->
+            <div>
+                <h3 class="text-2xl font-semibold text-gray-800 mb-4">🔒 Security Features</h3>
+                <div class="bg-red-50 rounded-lg p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-semibold text-red-800 mb-2">Authentication & Authorization</h4>
+                            <ul class="text-sm text-red-700 space-y-1">
+                                <li>• JWT token-based authentication</li>
+                                <li>• Role-based access control (RBAC)</li>
+                                <li>• Session timeout management</li>
+                                <li>• Password hashing (bcrypt)</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-red-800 mb-2">Data Protection</h4>
+                            <ul class="text-sm text-red-700 space-y-1">
+                                <li>• Input validation & sanitization</li>
+                                <li>• SQL injection prevention</li>
+                                <li>• XSS protection headers</li>
+                                <li>• HTTPS encryption (TLS 1.3)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Employee Modal -->
+    <div id="employeeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modalTitle" class="text-2xl font-bold text-gray-800">Add New Employee</h3>
+                <button onclick="closeEmployeeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+            </div>
+            
+            <form id="employeeForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Employee Number</label>
+                    <input type="text" id="modalEmployeeNumber" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., 005" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="modalEmployeeName" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., John Smith" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <select id="modalEmployeeDepartment" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                        <option value="">Select Role</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Store Manager">Store Manager</option>
+                        <option value="CEO">CEO</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Hourly Rate (ISK)</label>
+                    <input type="number" id="modalHourlyRate" step="1" min="0" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., 3500" required>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="button" onclick="closeEmployeeModal()" class="flex-1 bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+                        <span id="modalSubmitText">Add Employee</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Hours Modal -->
+    <div id="editHoursModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Edit Work Hours</h3>
+                <button onclick="closeEditHoursModal()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+            </div>
+            
+            <form id="editHoursForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Employee</label>
+                    <input type="text" id="editEmployeeName" class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100" readonly>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Clock In Time</label>
+                    <input type="datetime-local" id="editClockIn" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Clock Out Time</label>
+                    <input type="datetime-local" id="editClockOut" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <p class="text-sm text-gray-500 mt-1">Leave empty if employee is still clocked in</p>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="button" onclick="closeEditHoursModal()" class="flex-1 bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors">
+                        Update Hours
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 fade-in">
+            <div class="text-center mb-6">
+                <div class="text-6xl mb-4">⚠️</div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">Confirm Action</h3>
+                <p id="confirmMessage" class="text-gray-600"></p>
+            </div>
+            
+            <div class="flex space-x-4">
+                <button onclick="closeConfirmModal()" class="flex-1 bg-gray-500 text-white py-3 px-6 rounded-lg hover:bg-gray-600 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmButton" class="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data for demonstration
+        let employees = [
+            { id: 1, number: '001', name: 'John Smith', department: 'Sales', status: 'Active', hourlyRate: 3500 },
+            { id: 2, number: '002', name: 'Sarah Johnson', department: 'Store Manager', status: 'Active', hourlyRate: 4900 },
+            { id: 3, number: '003', name: 'Mike Davis', department: 'Sales', status: 'Active', hourlyRate: 3150 },
+            { id: 4, number: '004', name: 'Emily Brown', department: 'CEO', status: 'Active', hourlyRate: 10500 }
+        ];
+
+        let currentEditingEmployee = null;
+        let currentEditingRecord = null;
+        let auditLog = [
+            {
+                id: 1,
+                timestamp: '15/01/2024 14:30:00',
+                adminUser: 'Admin (PIN: 2205)',
+                action: 'Hours Edited',
+                employeeIds: [1],
+                employeeNames: ['John Smith'],
+                details: 'Changed daily hours from 7.5h to 8.0h for 15/01/2024',
+                reason: 'Time Correction',
+                notes: 'Employee forgot to clock out properly',
+                oldValue: '7.5',
+                newValue: '8.0',
+                period: 'daily',
+                date: '15/01/2024'
+            },
+            {
+                id: 2,
+                timestamp: '14/01/2024 09:15:00',
+                adminUser: 'Admin (PIN: 2205)',
+                action: 'Hours Reset',
+                employeeIds: [2, 3],
+                employeeNames: ['Sarah Johnson', 'Mike Davis'],
+                details: 'Reset weekly hours for week of 08/01/2024 - 14/01/2024',
+                reason: 'Payroll Period Correction',
+                notes: 'Correcting payroll calculation error',
+                recordsDeleted: 12,
+                period: 'weekly',
+                date: '08/01/2024'
+            }
+        ];
+
+        // Message and Translation System
+        let customMessages = {
+            clockIn: {
+                success: 'Velkominn, [Employee Name]! Þú hefur stimpla inn klukkan [Time].',
+                alreadyClockedIn: '[Employee Name], þú ert þegar stimpla inn!',
+                invalidEmployee: 'Ógilt starfsmannanúmer. Vinsamlegast reyndu aftur.',
+                inactiveEmployee: 'Starfsmannareikningur er óvirkur. Vinsamlegast hafðu samband við HR.'
+            },
+            clockOut: {
+                success: 'Bless, [Employee Name]! Þú hefur stimpla út klukkan [Time]. Vinnustundir: [Hours]',
+                notClockedIn: 'Engin virk innstimplun fannst fyrir þennan starfsmann.',
+                invalidEmployee: 'Ógilt starfsmannanúmer. Vinsamlegast reyndu aftur.',
+                inactiveEmployee: 'Starfsmannareikningur er óvirkur. Vinsamlegast hafðu samband við HR.'
+            },
+            general: {
+                enterEmployeeNumber: 'Vinsamlegast sláðu inn starfsmannanúmerið þitt'
+            }
+        };
+
+        let translations = {
+            // Navigation
+            employeeClock: 'Starfsmannastimpill',
+            adminPanel: 'Stjórnborð',
+            architecture: 'Arkitektúr',
+            hoursManagement: 'Tímastjórnun',
+            
+            // Employee Interface
+            employeeTimeClock: 'Starfsmannastimpill',
+            enterEmployeeId: 'Sláðu inn starfsmannanúmerið þitt',
+            employeeNumber: 'Starfsmannanúmer',
+            clockIn: 'Stimpla Inn',
+            clockOut: 'Stimpla Út',
+            currentTime: 'Núverandi tími',
+            
+            // Admin Interface
+            adminAccess: 'Stjórnendaaðgangur',
+            enterPin: 'Sláðu inn PIN kóða til að fá aðgang að stjórnborði',
+            pinCode: 'PIN Kóði',
+            accessAdminPanel: 'Fá aðgang að stjórnborði',
+            invalidPin: 'Ógildur PIN kóði. Vinsamlegast reyndu aftur.',
+            
+            // Dashboard
+            adminDashboard: 'Stjórnborð',
+            timeRecords: 'Tímaskrár',
+            salaryCalculator: 'Launareiknir',
+            exportCsv: 'Flytja út CSV',
+            generateReport: 'Búa til skýrslu',
+            logout: 'Skrá út',
+            
+            // Summary Cards
+            totalEmployees: 'Heildarstarfsmenn',
+            currentlyClockedIn: 'Nú stimpla inn',
+            totalHoursToday: 'Heildarstundir í dag',
+            
+            // Employee Management
+            employeeManagement: 'Starfsmannastjórnun',
+            addNewEmployee: 'Bæta við nýjum starfsmanni',
+            employeeId: 'Starfsmannanúmer',
+            name: 'Nafn',
+            role: 'Hlutverk',
+            hourlyRate: 'Tímakaup',
+            status: 'Staða',
+            actions: 'Aðgerðir',
+            
+            // Buttons
+            edit: 'Breyta',
+            remove: 'Fjarlægja',
+            reactivate: 'Virkja aftur',
+            cancel: 'Hætta við',
+            save: 'Vista',
+            update: 'Uppfæra',
+            add: 'Bæta við',
+            
+            // Messages & Translations Tab
+            messagesTranslations: 'Skilaboð og þýðingar',
+            customizeMessages: 'Sérsníða skilaboð',
+            translateInterface: 'Þýða viðmót'
+        };
+
+        let timeRecords = [
+            { id: 1, employeeId: 1, employeeNumber: '001', name: 'John Smith', clockIn: '15/01/2024 09:00:00', clockOut: '15/01/2024 17:30:00', hoursWorked: 8.5, status: 'Completed' },
+            { id: 2, employeeId: 2, employeeNumber: '002', name: 'Sarah Johnson', clockIn: '15/01/2024 08:30:00', clockOut: null, hoursWorked: 0, status: 'Clocked In' },
+            { id: 3, employeeId: 3, employeeNumber: '003', name: 'Mike Davis', clockIn: '15/01/2024 09:15:00', clockOut: '15/01/2024 18:00:00', hoursWorked: 8.75, status: 'Completed' }
+        ];
+
+        // Navigation functions
+        function showEmployeeInterface() {
+            document.getElementById('employeeInterface').classList.remove('hidden');
+            document.getElementById('adminInterface').classList.add('hidden');
+            document.getElementById('adminLogin').classList.add('hidden');
+            updateCurrentTime();
+        }
+
+        function showAdminInterface() {
+            document.getElementById('employeeInterface').classList.add('hidden');
+            document.getElementById('adminLogin').classList.remove('hidden');
+            document.getElementById('adminInterface').classList.add('hidden');
+            document.getElementById('adminPin').value = '';
+            document.getElementById('pinError').classList.add('hidden');
+        }
+
+        // Admin PIN functions
+        function verifyAdminPin() {
+            const enteredPin = document.getElementById('adminPin').value;
+            const correctPin = '2205';
+            
+            if (enteredPin === correctPin) {
+                document.getElementById('adminLogin').classList.add('hidden');
+                document.getElementById('adminInterface').classList.remove('hidden');
+                document.getElementById('pinError').classList.add('hidden');
+                updateAdminDashboard();
+            } else {
+                document.getElementById('pinError').classList.remove('hidden');
+                document.getElementById('adminPin').value = '';
+                setTimeout(() => {
+                    document.getElementById('pinError').classList.add('hidden');
+                }, 3000);
+            }
+        }
+
+        function logoutAdmin() {
+            document.getElementById('adminInterface').classList.add('hidden');
+            document.getElementById('employeeInterface').classList.remove('hidden');
+            document.getElementById('adminPin').value = '';
+        }
+
+        // Allow Enter key to submit PIN
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('adminPin').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    verifyAdminPin();
+                }
+            });
+        });
+
+        // Employee functions
+        function clockIn() {
+            const employeeNumber = document.getElementById('employeeNumber').value.trim();
+            if (!employeeNumber) {
+                showMessage(customMessages.general.enterEmployeeNumber, 'error');
+                return;
+            }
+
+            const employee = employees.find(emp => emp.number === employeeNumber);
+            if (!employee) {
+                showMessage(customMessages.clockIn.invalidEmployee, 'error');
+                return;
+            }
+
+            if (employee.status !== 'Active') {
+                showMessage(customMessages.clockIn.inactiveEmployee, 'error');
+                return;
+            }
+
+            // Check if already clocked in
+            const existingRecord = timeRecords.find(record => 
+                record.employeeNumber === employeeNumber && record.status === 'Clocked In'
+            );
+
+            if (existingRecord) {
+                const message = customMessages.clockIn.alreadyClockedIn
+                    .replace('[Employee Name]', employee.name);
+                showMessage(message, 'warning');
+                return;
+            }
+
+            const now = new Date();
+            const newRecord = {
+                id: timeRecords.length + 1,
+                employeeId: employee.id,
+                employeeNumber: employeeNumber,
+                name: employee.name,
+                clockIn: formatEuropeanDateTime(now),
+                clockOut: null,
+                hoursWorked: 0,
+                status: 'Clocked In'
+            };
+
+            timeRecords.push(newRecord);
+            
+            const message = customMessages.clockIn.success
+                .replace('[Employee Name]', employee.name)
+                .replace('[Time]', formatEuropeanTime(now))
+                .replace('[Date]', formatEuropeanDate(now));
+            
+            showMessage(message, 'success');
+            document.getElementById('employeeNumber').value = '';
+        }
+
+        function clockOut() {
+            const employeeNumber = document.getElementById('employeeNumber').value.trim();
+            if (!employeeNumber) {
+                showMessage(customMessages.general.enterEmployeeNumber, 'error');
+                return;
+            }
+
+            const employee = employees.find(emp => emp.number === employeeNumber);
+            if (!employee) {
+                showMessage(customMessages.clockOut.invalidEmployee, 'error');
+                return;
+            }
+
+            if (employee.status !== 'Active') {
+                showMessage(customMessages.clockOut.inactiveEmployee, 'error');
+                return;
+            }
+
+            const recordIndex = timeRecords.findIndex(record => 
+                record.employeeNumber === employeeNumber && record.status === 'Clocked In'
+            );
+
+            if (recordIndex === -1) {
+                showMessage(customMessages.clockOut.notClockedIn, 'error');
+                return;
+            }
+
+            const now = new Date();
+            const record = timeRecords[recordIndex];
+            const clockInTime = new Date(record.clockIn);
+            const hoursWorked = ((now - clockInTime) / (1000 * 60 * 60)).toFixed(2);
+
+            timeRecords[recordIndex] = {
+                ...record,
+                clockOut: formatEuropeanDateTime(now),
+                hoursWorked: parseFloat(hoursWorked),
+                status: 'Completed'
+            };
+
+            const message = customMessages.clockOut.success
+                .replace('[Employee Name]', record.name)
+                .replace('[Time]', formatEuropeanTime(now))
+                .replace('[Date]', formatEuropeanDate(now))
+                .replace('[Hours]', hoursWorked);
+
+            showMessage(message, 'success');
+            document.getElementById('employeeNumber').value = '';
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('clockMessage');
+            messageDiv.className = `p-4 rounded-lg text-center font-medium ${
+                type === 'success' ? 'bg-green-100 text-green-800' :
+                type === 'error' ? 'bg-red-100 text-red-800' :
+                'bg-yellow-100 text-yellow-800'
+            }`;
+            messageDiv.textContent = message;
+            messageDiv.classList.remove('hidden');
+            messageDiv.classList.add('pulse-success');
+
+            setTimeout(() => {
+                messageDiv.classList.add('hidden');
+                messageDiv.classList.remove('pulse-success');
+            }, 5000);
+        }
+
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = formatEuropeanDateTime(now);
+        }
+
+        function formatEuropeanDateTime(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+        }
+
+        function formatEuropeanDate(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+
+        function formatEuropeanTime(date) {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        // Tab switching functions
+        function showTimeRecords() {
+            document.getElementById('timeRecordsSection').classList.remove('hidden');
+            document.getElementById('hoursManagementSection').classList.add('hidden');
+            document.getElementById('salarySection').classList.add('hidden');
+            document.getElementById('messagesSection').classList.add('hidden');
+            document.getElementById('architectureSection').classList.add('hidden');
+            document.getElementById('timeRecordsTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            document.getElementById('hoursManagementTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('salaryTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('messagesTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('architectureTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+        }
+
+        function showHoursManagement() {
+            document.getElementById('timeRecordsSection').classList.add('hidden');
+            document.getElementById('hoursManagementSection').classList.remove('hidden');
+            document.getElementById('salarySection').classList.add('hidden');
+            document.getElementById('messagesSection').classList.add('hidden');
+            document.getElementById('architectureSection').classList.add('hidden');
+            document.getElementById('timeRecordsTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('hoursManagementTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            document.getElementById('salaryTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('messagesTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('architectureTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            
+            // Initialize the hours management tab
+            showEditHours();
+            populateEmployeeDropdowns();
+        }
+
+        function showSalaryCalculator() {
+            document.getElementById('timeRecordsSection').classList.add('hidden');
+            document.getElementById('hoursManagementSection').classList.add('hidden');
+            document.getElementById('salarySection').classList.remove('hidden');
+            document.getElementById('messagesSection').classList.add('hidden');
+            document.getElementById('architectureSection').classList.add('hidden');
+            document.getElementById('timeRecordsTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('hoursManagementTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('salaryTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            document.getElementById('messagesTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('architectureTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+        }
+
+        function showMessagesTranslations() {
+            document.getElementById('timeRecordsSection').classList.add('hidden');
+            document.getElementById('hoursManagementSection').classList.add('hidden');
+            document.getElementById('salarySection').classList.add('hidden');
+            document.getElementById('messagesSection').classList.remove('hidden');
+            document.getElementById('architectureSection').classList.add('hidden');
+            document.getElementById('timeRecordsTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('hoursManagementTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('salaryTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('messagesTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            document.getElementById('architectureTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            
+            // Initialize the messages tab
+            showCustomMessages();
+            loadMessagesIntoForm();
+            loadTranslationsIntoForm();
+        }
+
+        function showArchitecture() {
+            document.getElementById('timeRecordsSection').classList.add('hidden');
+            document.getElementById('hoursManagementSection').classList.add('hidden');
+            document.getElementById('salarySection').classList.add('hidden');
+            document.getElementById('messagesSection').classList.add('hidden');
+            document.getElementById('architectureSection').classList.remove('hidden');
+            document.getElementById('timeRecordsTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('hoursManagementTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('salaryTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('messagesTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('architectureTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+        }
+
+        function showCustomMessages() {
+            document.getElementById('customMessagesContent').classList.remove('hidden');
+            document.getElementById('translationsContent').classList.add('hidden');
+            document.getElementById('customMessagesTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            document.getElementById('translationsTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            updateMessagePreview();
+        }
+
+        function showTranslations() {
+            document.getElementById('customMessagesContent').classList.add('hidden');
+            document.getElementById('translationsContent').classList.remove('hidden');
+            document.getElementById('customMessagesTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('translationsTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            updateTranslationPreview();
+        }
+
+        // Message Management Functions
+        function loadMessagesIntoForm() {
+            document.getElementById('clockInSuccess').value = customMessages.clockIn.success;
+            document.getElementById('clockInAlready').value = customMessages.clockIn.alreadyClockedIn;
+            document.getElementById('clockInInvalid').value = customMessages.clockIn.invalidEmployee;
+            document.getElementById('clockOutSuccess').value = customMessages.clockOut.success;
+            document.getElementById('clockOutNotIn').value = customMessages.clockOut.notClockedIn;
+            document.getElementById('clockOutInvalid').value = customMessages.clockOut.invalidEmployee;
+        }
+
+        function loadTranslationsIntoForm() {
+            document.getElementById('trans_employeeClock').value = translations.employeeClock;
+            document.getElementById('trans_adminPanel').value = translations.adminPanel;
+            document.getElementById('trans_architecture').value = translations.architecture;
+            document.getElementById('trans_clockIn').value = translations.clockIn;
+            document.getElementById('trans_clockOut').value = translations.clockOut;
+            document.getElementById('trans_employeeNumber').value = translations.employeeNumber;
+            document.getElementById('trans_currentTime').value = translations.currentTime;
+        }
+
+        function updateMessagePreview() {
+            const employeeName = document.getElementById('previewEmployeeName').value || 'John Smith';
+            const now = new Date();
+            const time = formatEuropeanTime(now);
+            const date = formatEuropeanDate(now);
+            const hours = '8.5';
+
+            const clockInMessage = document.getElementById('clockInSuccess').value
+                .replace('[Employee Name]', employeeName)
+                .replace('[Time]', time)
+                .replace('[Date]', date);
+
+            const clockOutMessage = document.getElementById('clockOutSuccess').value
+                .replace('[Employee Name]', employeeName)
+                .replace('[Time]', time)
+                .replace('[Date]', date)
+                .replace('[Hours]', hours);
+
+            document.getElementById('clockInPreview').textContent = clockInMessage;
+            document.getElementById('clockOutPreview').textContent = clockOutMessage;
+        }
+
+        function updateTranslationPreview() {
+            document.getElementById('previewClockIn').textContent = document.getElementById('trans_clockIn').value;
+            document.getElementById('previewClockOut').textContent = document.getElementById('trans_clockOut').value;
+            document.getElementById('previewEmployeeNumber').textContent = document.getElementById('trans_employeeNumber').value;
+            document.getElementById('previewCurrentTime').textContent = document.getElementById('trans_currentTime').value;
+        }
+
+        function saveMessages() {
+            customMessages.clockIn.success = document.getElementById('clockInSuccess').value;
+            customMessages.clockIn.alreadyClockedIn = document.getElementById('clockInAlready').value;
+            customMessages.clockIn.invalidEmployee = document.getElementById('clockInInvalid').value;
+            customMessages.clockOut.success = document.getElementById('clockOutSuccess').value;
+            customMessages.clockOut.notClockedIn = document.getElementById('clockOutNotIn').value;
+            customMessages.clockOut.invalidEmployee = document.getElementById('clockOutInvalid').value;
+
+            // Save to localStorage for persistence
+            localStorage.setItem('timeClockMessages', JSON.stringify(customMessages));
+            
+            showMessage('Skilaboð hafa verið vistuð! (Messages have been saved!)', 'success');
+        }
+
+        function saveTranslations() {
+            translations.employeeClock = document.getElementById('trans_employeeClock').value;
+            translations.adminPanel = document.getElementById('trans_adminPanel').value;
+            translations.architecture = document.getElementById('trans_architecture').value;
+            translations.clockIn = document.getElementById('trans_clockIn').value;
+            translations.clockOut = document.getElementById('trans_clockOut').value;
+            translations.employeeNumber = document.getElementById('trans_employeeNumber').value;
+            translations.currentTime = document.getElementById('trans_currentTime').value;
+
+            // Save to localStorage for persistence
+            localStorage.setItem('timeClockTranslations', JSON.stringify(translations));
+            
+            // Apply translations to the interface
+            applyTranslations();
+            
+            showMessage('Þýðingar hafa verið vistaðar! (Translations have been saved!)', 'success');
+        }
+
+        function resetMessages() {
+            if (confirm('Ertu viss um að þú viljir endurstilla öll skilaboð? (Are you sure you want to reset all messages?)')) {
+                customMessages = {
+                    clockIn: {
+                        success: 'Velkominn, [Employee Name]! Þú hefur stimpla inn klukkan [Time].',
+                        alreadyClockedIn: '[Employee Name], þú ert þegar stimpla inn!',
+                        invalidEmployee: 'Ógilt starfsmannanúmer. Vinsamlegast reyndu aftur.',
+                        inactiveEmployee: 'Starfsmannareikningur er óvirkur. Vinsamlegast hafðu samband við HR.'
+                    },
+                    clockOut: {
+                        success: 'Bless, [Employee Name]! Þú hefur stimpla út klukkan [Time]. Vinnustundir: [Hours]',
+                        notClockedIn: 'Engin virk innstimplun fannst fyrir þennan starfsmann.',
+                        invalidEmployee: 'Ógilt starfsmannanúmer. Vinsamlegast reyndu aftur.',
+                        inactiveEmployee: 'Starfsmannareikningur er óvirkur. Vinsamlegast hafðu samband við HR.'
+                    },
+                    general: {
+                        enterEmployeeNumber: 'Vinsamlegast sláðu inn starfsmannanúmerið þitt'
+                    }
+                };
+                loadMessagesIntoForm();
+                updateMessagePreview();
+                localStorage.removeItem('timeClockMessages');
+            }
+        }
+
+        function resetTranslations() {
+            if (confirm('Ertu viss um að þú viljir endurstilla allar þýðingar? (Are you sure you want to reset all translations?)')) {
+                translations = {
+                    employeeClock: 'Starfsmannastimpill',
+                    adminPanel: 'Stjórnborð',
+                    architecture: 'Arkitektúr',
+                    clockIn: 'Stimpla Inn',
+                    clockOut: 'Stimpla Út',
+                    employeeNumber: 'Starfsmannanúmer',
+                    currentTime: 'Núverandi tími',
+                    timeRecords: 'Tímaskrár',
+                    salaryCalculator: 'Launareiknir',
+                    messagesTranslations: 'Skilaboð og þýðingar',
+                    customizeMessages: 'Sérsníða skilaboð',
+                    translateInterface: 'Þýða viðmót',
+                    save: 'Vista'
+                };
+                loadTranslationsIntoForm();
+                updateTranslationPreview();
+                applyTranslations();
+                localStorage.removeItem('timeClockTranslations');
+            }
+        }
+
+        function applyTranslations() {
+            // Apply translations to elements with data-translate attributes
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                if (translations[key]) {
+                    element.textContent = translations[key];
+                }
+            });
+        }
+
+        // Load saved messages and translations on page load
+        function loadSavedSettings() {
+            const savedMessages = localStorage.getItem('timeClockMessages');
+            if (savedMessages) {
+                customMessages = JSON.parse(savedMessages);
+            }
+
+            const savedTranslations = localStorage.getItem('timeClockTranslations');
+            if (savedTranslations) {
+                translations = JSON.parse(savedTranslations);
+                applyTranslations();
+            }
+        }
+
+        // Admin functions
+        function updateAdminDashboard() {
+            // Update summary cards
+            const activeEmployees = employees.filter(emp => emp.status === 'Active');
+            document.getElementById('totalEmployees').textContent = activeEmployees.length;
+            document.getElementById('clockedInCount').textContent = timeRecords.filter(r => r.status === 'Clocked In').length;
+            
+            const todayHours = timeRecords
+                .filter(r => r.status === 'Completed')
+                .reduce((total, r) => total + r.hoursWorked, 0);
+            document.getElementById('totalHoursToday').textContent = todayHours.toFixed(1);
+
+            // Update tables
+            updateEmployeeManagementTable();
+            updateTimeRecordsTable();
+        }
+
+        // Employee Management Functions
+        function updateEmployeeManagementTable() {
+            const tbody = document.getElementById('employeeManagementTable');
+            tbody.innerHTML = '';
+
+            employees.forEach(employee => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-mono">${employee.number}</td>
+                    <td class="px-4 py-3 font-medium">${employee.name}</td>
+                    <td class="px-4 py-3">${employee.department}</td>
+                    <td class="px-4 py-3 font-semibold text-green-600">${employee.hourlyRate.toFixed(0)} ISK/hr</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${
+                            employee.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }">
+                            ${employee.status}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex space-x-2">
+                            <button onclick="editEmployee(${employee.id})" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                            ${employee.status === 'Active' ? 
+                                `<button onclick="confirmRemoveEmployee(${employee.id})" class="text-red-600 hover:text-red-800 text-sm font-medium">Remove</button>` :
+                                `<button onclick="reactivateEmployee(${employee.id})" class="text-green-600 hover:text-green-800 text-sm font-medium">Reactivate</button>`
+                            }
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function showAddEmployeeModal() {
+            currentEditingEmployee = null;
+            document.getElementById('modalTitle').textContent = 'Add New Employee';
+            document.getElementById('modalSubmitText').textContent = 'Add Employee';
+            document.getElementById('modalEmployeeNumber').value = '';
+            document.getElementById('modalEmployeeName').value = '';
+            document.getElementById('modalEmployeeDepartment').value = '';
+            document.getElementById('modalHourlyRate').value = '';
+            document.getElementById('employeeModal').classList.remove('hidden');
+        }
+
+        function editEmployee(employeeId) {
+            const employee = employees.find(emp => emp.id === employeeId);
+            if (employee) {
+                currentEditingEmployee = employee;
+                document.getElementById('modalTitle').textContent = 'Edit Employee';
+                document.getElementById('modalSubmitText').textContent = 'Update Employee';
+                document.getElementById('modalEmployeeNumber').value = employee.number;
+                document.getElementById('modalEmployeeName').value = employee.name;
+                document.getElementById('modalEmployeeDepartment').value = employee.department;
+                document.getElementById('modalHourlyRate').value = employee.hourlyRate;
+                document.getElementById('employeeModal').classList.remove('hidden');
+            }
+        }
+
+        function closeEmployeeModal() {
+            document.getElementById('employeeModal').classList.add('hidden');
+            currentEditingEmployee = null;
+        }
+
+        function confirmRemoveEmployee(employeeId) {
+            const employee = employees.find(emp => emp.id === employeeId);
+            if (employee) {
+                document.getElementById('confirmMessage').textContent = `Are you sure you want to remove ${employee.name} from the system? This will mark them as inactive.`;
+                document.getElementById('confirmButton').onclick = () => removeEmployee(employeeId);
+                document.getElementById('confirmModal').classList.remove('hidden');
+            }
+        }
+
+        function removeEmployee(employeeId) {
+            const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
+            if (employeeIndex !== -1) {
+                employees[employeeIndex].status = 'Inactive';
+                updateEmployeeManagementTable();
+                updateAdminDashboard();
+                closeConfirmModal();
+            }
+        }
+
+        function reactivateEmployee(employeeId) {
+            const employeeIndex = employees.findIndex(emp => emp.id === employeeId);
+            if (employeeIndex !== -1) {
+                employees[employeeIndex].status = 'Active';
+                updateEmployeeManagementTable();
+                updateAdminDashboard();
+            }
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        // Handle employee form submission
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('employeeForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const employeeNumber = document.getElementById('modalEmployeeNumber').value.trim();
+                const employeeName = document.getElementById('modalEmployeeName').value.trim();
+                const employeeDepartment = document.getElementById('modalEmployeeDepartment').value;
+                const hourlyRate = parseFloat(document.getElementById('modalHourlyRate').value);
+
+                // Validate employee number uniqueness
+                const existingEmployee = employees.find(emp => 
+                    emp.number === employeeNumber && 
+                    (!currentEditingEmployee || emp.id !== currentEditingEmployee.id)
+                );
+
+                if (existingEmployee) {
+                    alert('Employee number already exists. Please use a different number.');
+                    return;
+                }
+
+                if (currentEditingEmployee) {
+                    // Update existing employee
+                    currentEditingEmployee.number = employeeNumber;
+                    currentEditingEmployee.name = employeeName;
+                    currentEditingEmployee.department = employeeDepartment;
+                    currentEditingEmployee.hourlyRate = Math.round(hourlyRate);
+                    
+                    // Update any existing time records with the new name
+                    timeRecords.forEach(record => {
+                        if (record.employeeId === currentEditingEmployee.id) {
+                            record.employeeNumber = employeeNumber;
+                            record.name = employeeName;
+                        }
+                    });
+                } else {
+                    // Add new employee
+                    const newEmployee = {
+                        id: Math.max(...employees.map(emp => emp.id)) + 1,
+                        number: employeeNumber,
+                        name: employeeName,
+                        department: employeeDepartment,
+                        hourlyRate: hourlyRate,
+                        status: 'Active'
+                    };
+                    employees.push(newEmployee);
+                }
+
+                updateEmployeeManagementTable();
+                updateTimeRecordsTable();
+                updateAdminDashboard();
+                closeEmployeeModal();
+            });
+
+            // Handle edit hours form submission
+            document.getElementById('editHoursForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!currentEditingRecord) return;
+                
+                const clockInValue = document.getElementById('editClockIn').value;
+                const clockOutValue = document.getElementById('editClockOut').value;
+                
+                if (!clockInValue) {
+                    alert('Clock in time is required.');
+                    return;
+                }
+                
+                const clockInTime = new Date(clockInValue);
+                currentEditingRecord.clockIn = formatEuropeanDateTime(clockInTime);
+                
+                if (clockOutValue) {
+                    const clockOutTime = new Date(clockOutValue);
+                    
+                    if (clockOutTime <= clockInTime) {
+                        alert('Clock out time must be after clock in time.');
+                        return;
+                    }
+                    
+                    currentEditingRecord.clockOut = formatEuropeanDateTime(clockOutTime);
+                    const hoursWorked = ((clockOutTime - clockInTime) / (1000 * 60 * 60));
+                    currentEditingRecord.hoursWorked = parseFloat(hoursWorked.toFixed(2));
+                    currentEditingRecord.status = 'Completed';
+                } else {
+                    // Employee is still clocked in
+                    currentEditingRecord.clockOut = null;
+                    currentEditingRecord.hoursWorked = 0;
+                    currentEditingRecord.status = 'Clocked In';
+                }
+                
+                updateTimeRecordsTable();
+                updateAdminDashboard();
+                closeEditHoursModal();
+            });
+        });
+
+        function updateTimeRecordsTable() {
+            const tbody = document.getElementById('timeRecordsTable');
+            tbody.innerHTML = '';
+
+            timeRecords.forEach(record => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-mono">${record.employeeNumber}</td>
+                    <td class="px-4 py-3 font-medium">${record.name}</td>
+                    <td class="px-4 py-3">${record.clockIn}</td>
+                    <td class="px-4 py-3">${record.clockOut || '-'}</td>
+                    <td class="px-4 py-3">${record.hoursWorked.toFixed(2)}h</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${
+                            record.status === 'Clocked In' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                        }">
+                            ${record.status}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <button onclick="editHours(${record.id})" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit Hours</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Edit hours functionality
+        function editHours(recordId) {
+            const record = timeRecords.find(r => r.id === recordId);
+            if (record) {
+                currentEditingRecord = record;
+                document.getElementById('editEmployeeName').value = record.name;
+                
+                // Convert to datetime-local format
+                const clockInDate = new Date(record.clockIn);
+                document.getElementById('editClockIn').value = formatDateTimeLocal(clockInDate);
+                
+                if (record.clockOut) {
+                    const clockOutDate = new Date(record.clockOut);
+                    document.getElementById('editClockOut').value = formatDateTimeLocal(clockOutDate);
+                } else {
+                    document.getElementById('editClockOut').value = '';
+                }
+                
+                document.getElementById('editHoursModal').classList.remove('hidden');
+            }
+        }
+
+        function formatDateTimeLocal(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        function closeEditHoursModal() {
+            document.getElementById('editHoursModal').classList.add('hidden');
+            currentEditingRecord = null;
+        }
+
+        // Salary calculation functions
+        function calculateSalaries() {
+            const selectedYear = document.getElementById('salaryYear').value;
+            const selectedMonth = document.getElementById('salaryMonth').value;
+            
+            // Filter records for the selected month and year
+            const monthlyRecords = timeRecords.filter(record => {
+                // Parse European date format (DD/MM/YYYY HH:MM:SS)
+                const dateParts = record.clockIn.split(' ')[0].split('/');
+                const recordDay = parseInt(dateParts[0]);
+                const recordMonth = parseInt(dateParts[1]);
+                const recordYear = parseInt(dateParts[2]);
+                
+                return recordYear == selectedYear && 
+                       recordMonth == parseInt(selectedMonth) &&
+                       record.status === 'Completed';
+            });
+
+            // Calculate salary for each employee
+            const salaryData = employees
+                .filter(emp => emp.status === 'Active')
+                .map(employee => {
+                    const employeeRecords = monthlyRecords.filter(r => r.employeeId === employee.id);
+                    const totalHours = employeeRecords.reduce((sum, r) => sum + r.hoursWorked, 0);
+                    const grossSalary = totalHours * employee.hourlyRate;
+                    
+                    return {
+                        employee: employee,
+                        hoursWorked: totalHours,
+                        grossSalary: grossSalary,
+                        recordCount: employeeRecords.length
+                    };
+                });
+
+            // Update summary cards
+            const totalPayroll = salaryData.reduce((sum, data) => sum + data.grossSalary, 0);
+            const totalHours = salaryData.reduce((sum, data) => sum + data.hoursWorked, 0);
+            const averageSalary = salaryData.length > 0 ? totalPayroll / salaryData.length : 0;
+
+            document.getElementById('totalPayroll').textContent = `${totalPayroll.toFixed(0)} ISK`;
+            document.getElementById('averageSalary').textContent = `${averageSalary.toFixed(0)} ISK`;
+            document.getElementById('totalHoursMonth').textContent = `${totalHours.toFixed(1)}h`;
+
+            // Update salary table
+            updateSalaryTable(salaryData);
+        }
+
+        function updateMonthOptions() {
+            // This function can be used to update month options based on year if needed
+            // For now, all months are available for all years
+            calculateSalaries(); // Auto-calculate when year changes
+        }
+
+        function updateSalaryTable(salaryData) {
+            const tbody = document.getElementById('salaryTable');
+            tbody.innerHTML = '';
+
+            salaryData.forEach(data => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 py-3">
+                        <div>
+                            <div class="font-medium">${data.employee.name}</div>
+                            <div class="text-sm text-gray-500">#${data.employee.number}</div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3">${data.employee.department}</td>
+                    <td class="px-4 py-3 font-semibold text-green-600">${data.employee.hourlyRate.toFixed(0)} ISK</td>
+                    <td class="px-4 py-3">${data.hoursWorked.toFixed(2)}h</td>
+                    <td class="px-4 py-3 font-bold text-green-700">${data.grossSalary.toFixed(0)} ISK</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${
+                            data.hoursWorked > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }">
+                            ${data.hoursWorked > 0 ? 'Has Records' : 'No Records'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function exportToCSV() {
+            const headers = ['Employee Number', 'Name', 'Clock In', 'Clock Out', 'Hours Worked', 'Status'];
+            const csvContent = [
+                headers.join(','),
+                ...timeRecords.map(record => [
+                    record.employeeNumber,
+                    record.name,
+                    record.clockIn,
+                    record.clockOut || '',
+                    record.hoursWorked,
+                    record.status
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `time-records-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function generateReport() {
+            const report = {
+                totalEmployees: employees.length,
+                totalRecords: timeRecords.length,
+                totalHours: timeRecords.reduce((sum, r) => sum + r.hoursWorked, 0),
+                averageHours: timeRecords.length > 0 ? (timeRecords.reduce((sum, r) => sum + r.hoursWorked, 0) / timeRecords.length).toFixed(2) : 0,
+                employeesCurrentlyIn: timeRecords.filter(r => r.status === 'Clocked In').length
+            };
+
+            alert(`📊 Time Report Summary:
+            
+Total Employees: ${report.totalEmployees}
+Total Time Records: ${report.totalRecords}
+Total Hours Worked: ${report.totalHours.toFixed(2)}h
+Average Hours per Record: ${report.averageHours}h
+Currently Clocked In: ${report.employeesCurrentlyIn}
+
+This is a demo report. In production, this would generate detailed PDF/Excel reports with charts and analytics.`);
+        }
+
+        // Hours Management Functions
+        function showEditHours() {
+            document.getElementById('editHoursContent').classList.remove('hidden');
+            document.getElementById('resetHoursContent').classList.add('hidden');
+            document.getElementById('auditLogContent').classList.add('hidden');
+            document.getElementById('editHoursTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            document.getElementById('resetHoursTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('auditLogTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            
+            // Set default date to today
+            document.getElementById('editHoursDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        function showResetHours() {
+            document.getElementById('editHoursContent').classList.add('hidden');
+            document.getElementById('resetHoursContent').classList.remove('hidden');
+            document.getElementById('auditLogContent').classList.add('hidden');
+            document.getElementById('editHoursTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('resetHoursTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            document.getElementById('auditLogTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            
+            populateResetEmployeeList();
+        }
+
+        function showAuditLog() {
+            document.getElementById('editHoursContent').classList.add('hidden');
+            document.getElementById('resetHoursContent').classList.add('hidden');
+            document.getElementById('auditLogContent').classList.remove('hidden');
+            document.getElementById('editHoursTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('resetHoursTab').className = 'bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors';
+            document.getElementById('auditLogTab').className = 'bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors';
+            
+            updateAuditLogTable();
+        }
+
+        function populateEmployeeDropdowns() {
+            const editSelect = document.getElementById('editHoursEmployee');
+            editSelect.innerHTML = '<option value="">Choose an employee...</option>';
+            
+            employees.filter(emp => emp.status === 'Active').forEach(employee => {
+                const option = document.createElement('option');
+                option.value = employee.id;
+                option.textContent = `${employee.name} (#${employee.number})`;
+                editSelect.appendChild(option);
+            });
+        }
+
+        function populateResetEmployeeList() {
+            const container = document.getElementById('resetEmployeeList');
+            container.innerHTML = '';
+            
+            employees.filter(emp => emp.status === 'Active').forEach(employee => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-2';
+                div.innerHTML = `
+                    <input type="checkbox" id="reset_emp_${employee.id}" value="${employee.id}" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+                    <label for="reset_emp_${employee.id}" class="text-sm text-gray-700">${employee.name} (#${employee.number})</label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function loadEmployeeHours() {
+            const employeeId = document.getElementById('editHoursEmployee').value;
+            const period = document.getElementById('editHoursPeriod').value;
+            const date = document.getElementById('editHoursDate').value;
+            
+            if (!employeeId || !period || !date) {
+                document.getElementById('currentHoursDisplay').classList.add('hidden');
+                document.getElementById('editHoursForm').classList.add('hidden');
+                return;
+            }
+
+            const employee = employees.find(emp => emp.id == employeeId);
+            const selectedDate = new Date(date);
+            
+            // Calculate date range based on period
+            let startDate, endDate;
+            if (period === 'daily') {
+                startDate = new Date(selectedDate);
+                endDate = new Date(selectedDate);
+            } else if (period === 'weekly') {
+                const dayOfWeek = selectedDate.getDay();
+                startDate = new Date(selectedDate);
+                startDate.setDate(selectedDate.getDate() - dayOfWeek);
+                endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 6);
+            } else if (period === 'monthly') {
+                startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+                endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+            }
+
+            // Filter records for the employee and date range
+            const relevantRecords = timeRecords.filter(record => {
+                if (record.employeeId != employeeId || record.status !== 'Completed') return false;
+                
+                const recordDate = parseEuropeanDate(record.clockIn.split(' ')[0]);
+                return recordDate >= startDate && recordDate <= endDate;
+            });
+
+            const totalHours = relevantRecords.reduce((sum, record) => sum + record.hoursWorked, 0);
+            const recordCount = relevantRecords.length;
+            const averageHours = recordCount > 0 ? totalHours / recordCount : 0;
+
+            // Update display
+            document.getElementById('currentTotalHours').textContent = `${totalHours.toFixed(2)}h`;
+            document.getElementById('currentRecordCount').textContent = recordCount;
+            document.getElementById('currentAverageHours').textContent = `${averageHours.toFixed(2)}h`;
+            
+            document.getElementById('currentHoursDisplay').classList.remove('hidden');
+            document.getElementById('editHoursForm').classList.remove('hidden');
+            
+            // Pre-fill the new hours field with current total
+            document.getElementById('newTotalHours').value = totalHours.toFixed(2);
+        }
+
+        function parseEuropeanDate(dateStr) {
+            const parts = dateStr.split('/');
+            return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+
+        function confirmEditHours() {
+            const employeeId = document.getElementById('editHoursEmployee').value;
+            const period = document.getElementById('editHoursPeriod').value;
+            const date = document.getElementById('editHoursDate').value;
+            const newHours = parseFloat(document.getElementById('newTotalHours').value);
+            const reason = document.getElementById('editReason').value;
+            const notes = document.getElementById('editNotes').value;
+
+            if (!employeeId || !period || !date || isNaN(newHours) || !reason) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            if (newHours < 0 || newHours > 24) {
+                alert('Hours must be between 0 and 24.');
+                return;
+            }
+
+            const employee = employees.find(emp => emp.id == employeeId);
+            const currentHours = parseFloat(document.getElementById('currentTotalHours').textContent);
+
+            if (confirm(`Are you sure you want to change ${employee.name}'s ${period} hours from ${currentHours.toFixed(2)}h to ${newHours.toFixed(2)}h?\n\nReason: ${reason}\nNotes: ${notes || 'None'}`)) {
+                // Create audit log entry
+                const auditEntry = {
+                    id: auditLog.length + 1,
+                    timestamp: formatEuropeanDateTime(new Date()),
+                    adminUser: 'Admin (PIN: 2205)',
+                    action: 'Hours Edited',
+                    employeeIds: [parseInt(employeeId)],
+                    employeeNames: [employee.name],
+                    details: `Changed ${period} hours from ${currentHours.toFixed(2)}h to ${newHours.toFixed(2)}h for ${date}`,
+                    reason: reason,
+                    notes: notes,
+                    oldValue: currentHours.toFixed(2),
+                    newValue: newHours.toFixed(2),
+                    period: period,
+                    date: date
+                };
+                auditLog.push(auditEntry);
+
+                // Update time records (simplified - in production this would be more complex)
+                const selectedDate = new Date(date);
+                let startDate, endDate;
+                if (period === 'daily') {
+                    startDate = new Date(selectedDate);
+                    endDate = new Date(selectedDate);
+                } else if (period === 'weekly') {
+                    const dayOfWeek = selectedDate.getDay();
+                    startDate = new Date(selectedDate);
+                    startDate.setDate(selectedDate.getDate() - dayOfWeek);
+                    endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + 6);
+                } else if (period === 'monthly') {
+                    startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+                    endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+                }
+
+                // Find and update relevant records
+                const relevantRecords = timeRecords.filter(record => {
+                    if (record.employeeId != employeeId || record.status !== 'Completed') return false;
+                    const recordDate = parseEuropeanDate(record.clockIn.split(' ')[0]);
+                    return recordDate >= startDate && recordDate <= endDate;
+                });
+
+                if (relevantRecords.length > 0) {
+                    const adjustment = newHours - currentHours;
+                    const adjustmentPerRecord = adjustment / relevantRecords.length;
+                    
+                    relevantRecords.forEach(record => {
+                        record.hoursWorked = Math.max(0, record.hoursWorked + adjustmentPerRecord);
+                    });
+                }
+
+                alert('Hours updated successfully! Changes have been logged in the audit trail.');
+                cancelEditHours();
+                updateTimeRecordsTable();
+                updateAdminDashboard();
+            }
+        }
+
+        function cancelEditHours() {
+            document.getElementById('editHoursEmployee').value = '';
+            document.getElementById('newTotalHours').value = '';
+            document.getElementById('editReason').value = '';
+            document.getElementById('editNotes').value = '';
+            document.getElementById('currentHoursDisplay').classList.add('hidden');
+            document.getElementById('editHoursForm').classList.add('hidden');
+        }
+
+        // Reset Hours Functions
+        function updateResetOptions() {
+            const scope = document.getElementById('resetScope').value;
+            const period = document.getElementById('resetPeriod').value;
+            
+            // Show/hide employee selection
+            if (scope === 'single' || scope === 'multiple') {
+                document.getElementById('resetEmployeeSelection').classList.remove('hidden');
+            } else {
+                document.getElementById('resetEmployeeSelection').classList.add('hidden');
+            }
+
+            // Show/hide date selection
+            if (period) {
+                document.getElementById('resetDateSelection').classList.remove('hidden');
+                if (period === 'range') {
+                    document.getElementById('resetEndDateDiv').classList.remove('hidden');
+                } else {
+                    document.getElementById('resetEndDateDiv').classList.add('hidden');
+                }
+            } else {
+                document.getElementById('resetDateSelection').classList.add('hidden');
+            }
+
+            // Show/hide preview button
+            if (scope && period) {
+                document.getElementById('previewResetBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('previewResetBtn').classList.add('hidden');
+            }
+
+            // Hide other sections
+            document.getElementById('resetPreview').classList.add('hidden');
+            document.getElementById('resetConfirmation').classList.add('hidden');
+        }
+
+        function previewReset() {
+            const scope = document.getElementById('resetScope').value;
+            const period = document.getElementById('resetPeriod').value;
+            const startDate = document.getElementById('resetStartDate').value;
+            const endDate = document.getElementById('resetEndDate').value;
+
+            if (!scope || !period || !startDate) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            let selectedEmployees = [];
+            if (scope === 'single' || scope === 'multiple') {
+                const checkboxes = document.querySelectorAll('#resetEmployeeList input[type="checkbox"]:checked');
+                selectedEmployees = Array.from(checkboxes).map(cb => parseInt(cb.value));
+                
+                if (selectedEmployees.length === 0) {
+                    alert('Please select at least one employee.');
+                    return;
+                }
+            } else {
+                selectedEmployees = employees.filter(emp => emp.status === 'Active').map(emp => emp.id);
+            }
+
+            // Calculate what would be affected
+            const affectedRecords = timeRecords.filter(record => {
+                if (!selectedEmployees.includes(record.employeeId)) return false;
+                
+                const recordDate = parseEuropeanDate(record.clockIn.split(' ')[0]);
+                const start = new Date(startDate);
+                const end = endDate ? new Date(endDate) : start;
+                
+                return recordDate >= start && recordDate <= end;
+            });
+
+            const affectedEmployeeNames = employees
+                .filter(emp => selectedEmployees.includes(emp.id))
+                .map(emp => emp.name);
+
+            const totalHours = affectedRecords.reduce((sum, record) => sum + record.hoursWorked, 0);
+
+            // Show preview
+            document.getElementById('resetPreviewContent').innerHTML = `
+                <div class="space-y-2">
+                    <div><strong>Scope:</strong> ${scope === 'all' ? 'All Employees' : affectedEmployeeNames.join(', ')}</div>
+                    <div><strong>Period:</strong> ${period === 'range' ? `${startDate} to ${endDate}` : `${period} of ${startDate}`}</div>
+                    <div><strong>Records to Delete:</strong> ${affectedRecords.length}</div>
+                    <div><strong>Total Hours to Remove:</strong> ${totalHours.toFixed(2)}h</div>
+                    <div><strong>Employees Affected:</strong> ${affectedEmployeeNames.length}</div>
+                </div>
+            `;
+
+            document.getElementById('resetPreview').classList.remove('hidden');
+            document.getElementById('resetConfirmation').classList.remove('hidden');
+        }
+
+        function executeReset() {
+            const reason = document.getElementById('resetReason').value;
+            const notes = document.getElementById('resetNotes').value;
+            const confirmed = document.getElementById('resetConfirmCheck').checked;
+
+            if (!reason || !notes || !confirmed) {
+                alert('Please fill in all fields and confirm the action.');
+                return;
+            }
+
+            const scope = document.getElementById('resetScope').value;
+            const period = document.getElementById('resetPeriod').value;
+            const startDate = document.getElementById('resetStartDate').value;
+            const endDate = document.getElementById('resetEndDate').value;
+
+            let selectedEmployees = [];
+            if (scope === 'single' || scope === 'multiple') {
+                const checkboxes = document.querySelectorAll('#resetEmployeeList input[type="checkbox"]:checked');
+                selectedEmployees = Array.from(checkboxes).map(cb => parseInt(cb.value));
+            } else {
+                selectedEmployees = employees.filter(emp => emp.status === 'Active').map(emp => emp.id);
+            }
+
+            // Find records to delete
+            const recordsToDelete = timeRecords.filter(record => {
+                if (!selectedEmployees.includes(record.employeeId)) return false;
+                
+                const recordDate = parseEuropeanDate(record.clockIn.split(' ')[0]);
+                const start = new Date(startDate);
+                const end = endDate ? new Date(endDate) : start;
+                
+                return recordDate >= start && recordDate <= end;
+            });
+
+            const affectedEmployeeNames = employees
+                .filter(emp => selectedEmployees.includes(emp.id))
+                .map(emp => emp.name);
+
+            // Create audit log entry
+            const auditEntry = {
+                id: auditLog.length + 1,
+                timestamp: formatEuropeanDateTime(new Date()),
+                adminUser: 'Admin (PIN: 2205)',
+                action: 'Hours Reset',
+                employeeIds: selectedEmployees,
+                employeeNames: affectedEmployeeNames,
+                details: `Reset ${period} hours for ${endDate ? `${startDate} to ${endDate}` : startDate}`,
+                reason: reason,
+                notes: notes,
+                recordsDeleted: recordsToDelete.length,
+                period: period,
+                date: startDate
+            };
+            auditLog.push(auditEntry);
+
+            // Delete the records
+            recordsToDelete.forEach(record => {
+                const index = timeRecords.indexOf(record);
+                if (index > -1) {
+                    timeRecords.splice(index, 1);
+                }
+            });
+
+            alert(`Reset completed successfully!\n\n${recordsToDelete.length} records deleted.\nAction logged in audit trail.`);
+            
+            cancelReset();
+            updateTimeRecordsTable();
+            updateAdminDashboard();
+        }
+
+        function cancelReset() {
+            document.getElementById('resetScope').value = '';
+            document.getElementById('resetPeriod').value = '';
+            document.getElementById('resetStartDate').value = '';
+            document.getElementById('resetEndDate').value = '';
+            document.getElementById('resetReason').value = '';
+            document.getElementById('resetNotes').value = '';
+            document.getElementById('resetConfirmCheck').checked = false;
+            
+            document.getElementById('resetEmployeeSelection').classList.add('hidden');
+            document.getElementById('resetDateSelection').classList.add('hidden');
+            document.getElementById('resetPreview').classList.add('hidden');
+            document.getElementById('resetConfirmation').classList.add('hidden');
+            document.getElementById('previewResetBtn').classList.add('hidden');
+            
+            // Uncheck all employee checkboxes
+            document.querySelectorAll('#resetEmployeeList input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+
+        // Audit Log Functions
+        function updateAuditLogTable() {
+            const tbody = document.getElementById('auditLogTable');
+            const filter = document.getElementById('auditFilter').value;
+            
+            tbody.innerHTML = '';
+
+            const filteredLog = filter === 'all' ? auditLog : auditLog.filter(entry => {
+                if (filter === 'edit') return entry.action === 'Hours Edited';
+                if (filter === 'reset') return entry.action === 'Hours Reset';
+                if (filter === 'delete') return entry.action.includes('Delete');
+                return true;
+            });
+
+            filteredLog.reverse().forEach(entry => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 py-3 text-sm">${entry.timestamp}</td>
+                    <td class="px-4 py-3 text-sm font-medium">${entry.adminUser}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${
+                            entry.action === 'Hours Edited' ? 'bg-blue-100 text-blue-800' :
+                            entry.action === 'Hours Reset' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                        }">
+                            ${entry.action}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm">${entry.employeeNames.join(', ')}</td>
+                    <td class="px-4 py-3 text-sm">${entry.details}</td>
+                    <td class="px-4 py-3 text-sm">${entry.reason}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterAuditLog() {
+            updateAuditLogTable();
+        }
+
+        function exportAuditLog() {
+            const headers = ['Timestamp', 'Admin User', 'Action', 'Employees', 'Details', 'Reason', 'Notes'];
+            const csvContent = [
+                headers.join(','),
+                ...auditLog.map(entry => [
+                    entry.timestamp,
+                    entry.adminUser,
+                    entry.action,
+                    entry.employeeNames.join('; '),
+                    entry.details,
+                    entry.reason,
+                    entry.notes || ''
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Initialize
+        setInterval(updateCurrentTime, 1000);
+        updateCurrentTime();
+        loadSavedSettings();
+        showEmployeeInterface();
+
+        // Add event listeners for real-time preview updates
+        document.addEventListener('DOMContentLoaded', function() {
+            // Message preview updates
+            const messageInputs = ['clockInSuccess', 'clockInAlready', 'clockInInvalid', 'clockOutSuccess', 'clockOutNotIn', 'clockOutInvalid', 'previewEmployeeName'];
+            messageInputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updateMessagePreview);
+                }
+            });
+
+            // Translation preview updates
+            const translationInputs = ['trans_clockIn', 'trans_clockOut', 'trans_employeeNumber', 'trans_currentTime'];
+            translationInputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updateTranslationPreview);
+                }
+            });
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9722ac56a3e85cc6',t:'MTc1NTcwMTExMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
